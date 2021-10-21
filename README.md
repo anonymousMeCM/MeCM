@@ -1,5 +1,5 @@
 # MeCM
-Code and Data for model MeCM
+Code and Data for model MeCM implemented with pytorch 1.5.1
 
 We utilize three public datasets, including Movoelens, Dbook and Yelp.
 The original and processed datasets are available in 
