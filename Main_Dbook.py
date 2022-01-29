@@ -7,8 +7,7 @@ from tqdm import tqdm
 import torch
 import time
 from DataLoader import DataLoader
-
-# np.random.seed(2021)
+#  np.random.seed(2021)
 # torch.manual_seed(2021)
 
 def training(model, config, model_save=False, saved_filename=None, device=torch.device('cpu')):
@@ -119,17 +118,17 @@ def testing(model, test_data, device='cpu'):
 
 if __name__ == "__main__":
     os.environ["CUDA_VISIBLE_DEVICES"] = "0"
-    dataset = "movielens"
+    dataset = "dbook"
     model_name = "MeCM"
 
-    if dataset == "movielens":
-        from Configurations_Movielens import Movielens_config as config
+    if dataset == "dbook":
+        from Configurations_Dbook import Dbook_config as config
 
     print("Start time:{}".format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
     print("Configurations：")
     print(config)
 
-    Input_dir = "dataset/{}/Final_20".format(dataset)
+    Input_dir = "dataset/{}/Final_10".format(dataset)
     data_loader = DataLoader(Input_dir,config)
 
 

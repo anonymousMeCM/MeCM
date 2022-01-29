@@ -8,6 +8,7 @@ class DataLoader:
     def load_data(self, dataset, state):
         total_data = pickle.load(open(self.input_dir+"/meta_{}_tasks.pkl".format(state), "rb"))
 
+        # 转换为tensor （直接全部转换为tensor，使用时再转会比较慢）
         task_id_all, support_x_all, support_y_all, query_x_all, query_y_all = zip(*total_data)
         task_id_list = []
         support_x_u_tensor = []
@@ -36,7 +37,6 @@ class DataLoader:
             query_y_tensor.append(query_y_all[i])
         total_data_tensor = list(zip(task_id_list,support_x_u_tensor,support_x_v_tensor,support_y_tensor,query_x_u_tensor,query_x_v_tensor,query_y_tensor))
         return total_data_tensor, num_tasks
-
 
     def split_test_data(self,dataset):
         total_data = pickle.load(open(self.input_dir + "/split_test/split_meta_test_tasks.pkl", "rb"))
@@ -71,6 +71,39 @@ class DataLoader:
             total_data_dict[size_i] = list(zip(task_id_list, support_x_u_tensor, support_x_v_tensor, support_y_tensor, query_x_u_tensor,
                     query_x_v_tensor, query_y_tensor))
         return total_data_dict
+
+    def load_analysis_data(self,input_filename):
+        total_data = pickle.load(open(input_filename, "rb"))
+        task_id_all, support_x_all, support_y_all, query_x_all, query_y_all = zip(*total_data)
+        task_id_list = []
+        support_x_u_tensor = []
+        support_x_v_tensor = []
+        support_y_tensor = []
+        query_x_u_tensor = []
+        query_x_v_tensor = []
+        query_y_tensor = []
+
+        num_tasks = len(support_x_all)
+
+        # num_tasks = 320
+        for i in range(num_tasks):
+            support_x_u, support_x_v = zip(*support_x_all[i])
+
+            query_x_u, query_x_v = zip(*query_x_all[i])
+
+            task_id_list.append(task_id_all[i])
+            support_x_u_tensor.append(support_x_u)
+            support_x_v_tensor.append(support_x_v)
+            support_y_tensor.append(support_y_all[i])
+
+            query_x_u_tensor.append(query_x_u)
+            query_x_v_tensor.append(query_x_v)
+            query_y_tensor.append(query_y_all[i])
+        total_data_tensor = list(
+            zip(task_id_list, support_x_u_tensor, support_x_v_tensor, support_y_tensor, query_x_u_tensor,
+                query_x_v_tensor, query_y_tensor))
+        return total_data_tensor, num_tasks
+
 
 def MetaPath_Neighbors_Loader(input_dir,state):
     total_data = pickle.load(open(input_dir + "/{}_tasks_MP_neighbors.pkl".format(state), "rb"))

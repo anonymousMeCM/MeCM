@@ -2,7 +2,6 @@ import torch
 from torch.nn import functional as F
 from copy import deepcopy
 from torch.autograd import Variable
-
 class AE_TaskEncoder(torch.nn.Module):
     def __init__(self,config):
         super(AE_TaskEncoder, self).__init__()
@@ -125,7 +124,7 @@ class KV_TaskMemory(torch.nn.Module):
             para_list = []
             for para_i in base_model_paras.values():
                 if self.use_cuda:
-                    para_list.append(torch.ones_like(para_i).normal_().cuda())
+                    para_list.append(torch.ones_like(para_i).normal_().cuda())  # torch.nn.Parameter(torch.ones_like(para_i))
                 else:
                     para_list.append(torch.ones_like(para_i).normal_())
             self.V_memory.append(para_list)
@@ -143,10 +142,11 @@ class KV_TaskMemory(torch.nn.Module):
             for para_i in base_model_paras.values():
                 if self.use_cuda:
                     para_list.append(torch.zeros_like(
-                        para_i).cuda())
+                        para_i).cuda())  # torch.nn.Parameter(torch.ones_like(para_i))
                 else:
                     para_list.append(torch.zeros_like(para_i))
             self.batch_V_memory.append(para_list)
+        # print("requires_grad: batch_K_memory", self.batch_K_memory.requires_grad)
 
     def address_head(self, task_emb):
         repeated_task_emb = task_emb.repeat(self.num_memory_unit,1)
@@ -165,15 +165,15 @@ class KV_TaskMemory(torch.nn.Module):
         return rec_params
 
     def write_head(self):
-        self.K_memory = (1 - self.write_ratio) * self.K_memory + self.write_ratio * self.batch_K_memory
 
+        self.K_memory = (1 - self.write_ratio) * self.K_memory + self.write_ratio * self.batch_K_memory
         for i in range(self.num_memory_unit):
             for j in range(len(self.V_memory[i])):
                 self.V_memory[i][j] = (1 - self.write_ratio) * self.V_memory[i][j] + self.write_ratio * self.batch_V_memory[i][j]
         self.clear_temporary_fast_weights()
 
     def cosine_similarity(input1, input2):
-        query_norm = torch.sqrt(torch.sum(input1 ** 2 + 0.00001, 1))  #
+        query_norm = torch.sqrt(torch.sum(input1 ** 2 + 0.00001, 1))
         doc_norm = torch.sqrt(torch.sum(input2 ** 2 + 0.00001, 1))
 
         prod = torch.sum(torch.mul(input1, input2), 1)
@@ -183,18 +183,82 @@ class KV_TaskMemory(torch.nn.Module):
         return cos_sim_raw
 
     def store_temporary_fast_weights(self, task_rep, task_fast_weights, memory_weights):
+
         _weights = memory_weights.reshape(self.num_memory_unit, 1)
         task_rep = task_rep.reshape(1, -1)
         product = torch.mm(_weights, task_rep)
         self.batch_K_memory = (self.batch_K_memory + product).detach()
+
 
         for i in range(self.num_memory_unit):
             for j in range(len(task_fast_weights)):
                 self.batch_V_memory[i][j] = (self.batch_V_memory[i][j] +  memory_weights[i] * task_fast_weights[j]).detach()
 
     def clear_temporary_fast_weights(self):
-        self.batch_K_memory.fill_(0)
+        self.batch_K_memory.fill_(0)  # [K，task_emb_dim]
 
         for i in range(len(self.batch_V_memory)):
             for j in range(len(self.batch_V_memory[i])):
                 self.batch_V_memory[i][j].fill_(0)
+
+    def assign_saved_weights(self,saved_weights):
+
+        # print("original K：",self.K_memory)
+        self.K_memory.copy_(saved_weights["key"])
+        # print("new K：",self.K_memory)
+
+        # print("original V：", self.K_memory)
+        for i in range(self.num_memory_unit):
+            for j in range(len(self.V_memory[i])):
+                self.V_memory[i][j].copy_(saved_weights["value"][i][j])
+        # print("new V：", self.K_memory)
+        # x.copy_()
+        return 0
+
+    def save_weights(self,save_filename):
+        memory_dict = {}
+        memory_dict["key"] = self.K_memory
+        memory_dict["value"] = self.V_memory
+        # print(memory_dict)
+        torch.save(memory_dict, save_filename)
+
+class Modulation_Network(torch.nn.Module):
+
+    def __init__(self, config, base_model_paras,parameter_list):
+        super(Modulation_Network, self).__init__()
+
+        self.task_emb_dim = config["embedding_dim"] # Task representation
+        '''
+            Modulation_network 变体
+        '''
+        # self.task_emb_dim = config["embedding_dim"] # 32
+
+        self.modulated_paras = parameter_list
+        self.Modulation_nets = torch.nn.ModuleDict()
+
+
+        for parameter_i in parameter_list:
+
+            shape_i = base_model_paras[parameter_i].shape
+            total_dim_i = 1
+            for dim_i in shape_i:
+                total_dim_i *= dim_i
+            print(total_dim_i)
+            modulation_net_i = torch.nn.Sequential(
+                # [32] => [total_dim_i]
+                torch.nn.Linear(self.task_emb_dim, total_dim_i),
+                torch.nn.Sigmoid()
+            )
+            self.Modulation_nets[parameter_i] = modulation_net_i
+
+    def forward(self,task_repre):
+        modulation_gatings = {}
+        for parameter_i in self.modulated_paras:
+            # print(self.Modulation_nets[parameter_i])
+            modulation_gatings[parameter_i]  = self.Modulation_nets[parameter_i](task_repre)
+        return modulation_gatings
+
+
+
+
+

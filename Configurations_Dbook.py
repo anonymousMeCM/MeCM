@@ -1,8 +1,10 @@
 Dbook_config = {
     'dataset': 'dbook',
-    "Input_dir" : "dataset/dbook/Final_10",
+    "Input_dir": "dataset/dbook/Final_10",
     'use_cuda': True,
+    'model_save': False,
 
+    ### feature dims
     # item
     'num_item': 20934,
     'num_author': 10544,
@@ -32,15 +34,14 @@ Dbook_config = {
     'Decoder_layer_1': 64,
 
     # Task Memory
-    "num_memory_unit": 4,
-    "key_dim": 32 * 2,
-    "customization_ratio": 0.2,
+    "num_memory_unit": 8,
+    "key_dim": 32,
+    "customization_ratio": 1e-2,
 
     # HIN meta-path
     "num_task" : 13024,
     "num_metapath" : 5,
-    "metapaths": ['ULU', 'UIU_high', 'UIU_low','UIAIU','UIPIU'],
-
+    "metapaths": ['ULU', 'UIU_high', 'UIU_low', 'UIAIU', 'UIPIU'],  # ["User-Location-User", "User-Item-User_high","User-Item-User_low","User-Item-Author-item-User","User-Item-Publisher-item-User"]
     "n_neighbor_ULU" : 4,
     "n_neighbor_UIU_high" : 100,
     "n_neighbor_UIU_low" : 50,
@@ -49,8 +50,8 @@ Dbook_config = {
 
     # Training settings
     'local_steps': 2,
-    'lambda_recons_loss': 1e-2,
-    'memory_lr':1e-2,
+    'lambda_recons_loss': 1e-3,
+    'memory_lr':5e-3,
     'global_lr': 5e-4,
     'local_lr': 5e-3,
     'AE_lr': 5e-3,

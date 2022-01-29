@@ -18,11 +18,11 @@ class UserEmbeddingML(torch.nn.Module):
         self.embedding_userId = torch.nn.Embedding(
             num_embeddings=self.num_user,
             embedding_dim=self.embedding_dim
-        )
+        )  # torch.nn.Embedding()
         self.embedding_gender = torch.nn.Embedding(
             num_embeddings=self.num_gender,
             embedding_dim=self.embedding_dim
-        )
+        ) # torch.nn.Embedding()
         self.embedding_age = torch.nn.Embedding(
             num_embeddings=self.num_age,
             embedding_dim=self.embedding_dim
@@ -37,6 +37,10 @@ class UserEmbeddingML(torch.nn.Module):
         )
 
     def forward(self, user_fea):
+        """
+        :param user_fea: [userId(0),gender(1),age(2),occupation(3),area(4)]
+        :return:
+        """
         userId_idx = Variable(user_fea[:, 0], requires_grad=False)
         gender_idx = Variable(user_fea[:, 1], requires_grad=False)
         age_idx = Variable(user_fea[:, 2], requires_grad=False)
@@ -48,7 +52,7 @@ class UserEmbeddingML(torch.nn.Module):
         age_emb = self.embedding_age(age_idx)
         occupation_emb = self.embedding_occupation(occupation_idx)
         area_emb = self.embedding_area(area_idx)
-        return torch.cat((userId_emb, gender_emb, age_emb, occupation_emb, area_emb), 1)
+        return torch.cat((userId_emb, gender_emb, age_emb, occupation_emb, area_emb), 1)   # (samples, 5*32)  torch.cat() concatenation
 
 class ItemEmbeddingML(torch.nn.Module):
     def __init__(self, config):
@@ -74,7 +78,7 @@ class ItemEmbeddingML(torch.nn.Module):
             in_features=self.num_genre,
             out_features=self.embedding_dim,
             bias=False
-        )
+        ) # torch.nn.Linear()
         self.embedding_actor = torch.nn.Linear(
             in_features=self.num_actor,
             out_features=self.embedding_dim,
@@ -87,6 +91,10 @@ class ItemEmbeddingML(torch.nn.Module):
         )
 
     def forward(self, item_fea):
+        """
+        :param item_fea: [ID(0),rate（1），genre（2，2+num_genre），actor(2+num_genre,2+num_genre+num_actors), director(2+num_genre+num_actors: ) ]
+        :return:
+        """
 
         itemId_idx = Variable(item_fea[:, 0], requires_grad=False)
         rate_idx = Variable(item_fea[:, 1], requires_grad=False)
@@ -94,22 +102,65 @@ class ItemEmbeddingML(torch.nn.Module):
         actor_idx = Variable(item_fea[:, 2+self.num_genre : 2+self.num_genre+self.num_actor], requires_grad=False)
         director_idx = Variable(item_fea[:, 2+self.num_genre+self.num_actor:], requires_grad=False)
 
-        itemId_emb = self.embedding_itemId(itemId_idx)
-        rate_emb = self.embedding_rate(rate_idx)
+        itemId_emb = self.embedding_itemId(itemId_idx) # (1,32)
+        rate_emb = self.embedding_rate(rate_idx)  # (1,32)
 
         genre_sum = torch.sum(genre_idx.float(), 1).view(-1, 1)
-        genre_emb = self.embedding_genre(genre_idx.float()) / torch.where(genre_sum==0, torch.ones_like(genre_sum) , genre_sum)
+        genre_emb = self.embedding_genre(genre_idx.float()) / torch.where(genre_sum==0, torch.ones_like(genre_sum) , genre_sum)  # (1,32) view()
 
         actor_sum = torch.sum(actor_idx.float(), 1).view(-1, 1)
-        actor_emb = self.embedding_actor(actor_idx.float()) / torch.where(actor_sum==0, torch.ones_like(actor_sum) , actor_sum)
+        actor_emb = self.embedding_actor(actor_idx.float()) / torch.where(actor_sum==0, torch.ones_like(actor_sum) , actor_sum)  # (1,32) view()
 
         director_sum = torch.sum(director_idx.float(), 1).view(-1, 1)
-        director_emb = self.embedding_director(director_idx.float()) / torch.where(director_sum==0, torch.ones_like(director_sum) , director_sum)
-        return torch.cat((itemId_emb,rate_emb, genre_emb,actor_emb,director_emb), 1)
+        director_emb = self.embedding_director(director_idx.float()) / torch.where(director_sum==0, torch.ones_like(director_sum) , director_sum)  # (1,32) view() 相当于 reshape
+        return torch.cat((itemId_emb,rate_emb, genre_emb,actor_emb,director_emb), 1)  # (samples, 5*32)
+
+class UserEmbeddingML_test(torch.nn.Module):
+    def __init__(self, config):
+        super(UserEmbeddingML_test, self).__init__()
+
+        self.num_user = config['num_user']
+        self.embedding_dim = config['embedding_dim']
+
+        self.embedding_userId = torch.nn.Embedding(
+            num_embeddings=self.num_user,
+            embedding_dim=self.embedding_dim
+        )  # torch.nn.Embedding()
+
+    def forward(self, user_fea):
+        """
+        :param user_fea: [userId(0),gender(1),age(2),occupation(3),area(4)]
+        :return:
+        """
+        userId_idx = Variable(user_fea[:, 0], requires_grad=False)
+        userId_emb = self.embedding_userId(userId_idx)
+        return userId_emb
+
+class ItemEmbeddingML_test(torch.nn.Module):
+    def __init__(self, config):
+        super(ItemEmbeddingML_test, self).__init__()
+        self.num_item = config['num_item']
+        self.embedding_dim = config['embedding_dim']
+
+        self.embedding_itemId = torch.nn.Embedding(
+            num_embeddings=self.num_item,
+            embedding_dim=self.embedding_dim
+        )
+
+    def forward(self, item_fea):
+        """
+        :param item_fea: [ID(0),rate（1），genre（2，2+num_genre），actor(2+num_genre,2+num_genre+num_actors), director(2+num_genre+num_actors: ) ]
+        :return:
+        """
+
+        itemId_idx = Variable(item_fea[:, 0], requires_grad=False)
+        itemId_emb = self.embedding_itemId(itemId_idx) # (1,32)
+        return itemId_emb  # (samples, 5*32)
 
 class UserEmbeddingDB(torch.nn.Module):
     def __init__(self, config):
         super(UserEmbeddingDB, self).__init__()
+
         self.num_user = config['num_user']
         self.num_location = config['num_location']
 
@@ -134,7 +185,7 @@ class UserEmbeddingDB(torch.nn.Module):
 
         userId_emb = self.embedding_userId(userId_idx)
         location_emb = self.embedding_location(location_idx)
-        return torch.cat((userId_emb, location_emb), 1)
+        return torch.cat((userId_emb, location_emb), 1)   # (samples, 2*32)  torch.cat() concatenation
 
 class ItemEmbeddingDB(torch.nn.Module):
     def __init__(self, config):
@@ -216,7 +267,7 @@ class UserEmbeddingYP(torch.nn.Module):
         userId_emb = self.embedding_userId(userId_idx)
         fans_emb = self.embedding_fans(fans_idx)
         avgrating_emb = self.embedding_avgrating(avgrating_idx)
-        return torch.cat((userId_emb, fans_emb,avgrating_emb), 1)
+        return torch.cat((userId_emb, fans_emb,avgrating_emb), 1)   # (samples, 3*32)  torch.cat() concatenation
 
 class ItemEmbeddingYP(torch.nn.Module):
     def __init__(self, config):
@@ -270,7 +321,7 @@ class ItemEmbeddingYP(torch.nn.Module):
 
         category_sum = torch.sum(category_idx.float(), 1).view(-1, 1)
         category_emb = self.embedding_category(category_idx.float()) / torch.where(category_sum == 0, torch.ones_like(category_sum),
-                                                                          category_sum)  # (1,32) view() 相当于 reshape
+                                                                          category_sum)
 
         return torch.cat((itemId_emb,postalcode_emb, stars_emb,city_emb,category_emb), 1)  # (samples, 5*32)
 
@@ -286,18 +337,20 @@ class NCF_RecommModule(torch.nn.Module):
 
 
         self.vars = torch.nn.ParameterDict()
+        # self.vars_bn = torch.nn.ParameterList()
 
-        w1 = torch.nn.Parameter(torch.ones([self.fc2_in_dim,self.fc1_in_dim]))
+
+        w1 = torch.nn.Parameter(torch.ones([self.fc2_in_dim,self.fc1_in_dim]))  # layer_1
         torch.nn.init.xavier_normal_(w1)
         self.vars['recomm_fc_w1'] = w1
         self.vars['recomm_fc_b1'] = torch.nn.Parameter(torch.zeros(self.fc2_in_dim))
 
-        w2 = torch.nn.Parameter(torch.ones([self.fc2_out_dim,self.fc2_in_dim]))
+        w2 = torch.nn.Parameter(torch.ones([self.fc2_out_dim,self.fc2_in_dim])) # layer_2
         torch.nn.init.xavier_normal_(w2)
         self.vars['recomm_fc_w2'] = w2
         self.vars['recomm_fc_b2'] = torch.nn.Parameter(torch.zeros(self.fc2_in_dim))
 
-        w3 = torch.nn.Parameter(torch.ones([1, self.fc2_out_dim]))
+        w3 = torch.nn.Parameter(torch.ones([1, self.fc2_out_dim])) # output_layer
         torch.nn.init.xavier_normal_(w3)
         self.vars['recomm_fc_w3'] = w3
         self.vars['recomm_fc_b3'] = torch.nn.Parameter(torch.zeros(1))
@@ -309,7 +362,7 @@ class NCF_RecommModule(torch.nn.Module):
             vars_dict = self.vars
 
         x_i = item_emb
-        x_u = user_emb
+        x_u = user_emb  # movielens: loss:12.14... up! ; dbook 20epoch: user_cold: mae 0.6051;
 
         x = torch.cat((x_i, x_u), 1)
         x = F.relu(F.linear(x, vars_dict['recomm_fc_w1'], vars_dict['recomm_fc_b1']))
