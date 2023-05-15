@@ -1,5 +1,6 @@
 # MeCM
-Code and Data for model MeCM implemented with pytorch 1.5.1:
+Code and Data for model MeCM implemented with pytorch 1.5.1
+
 Our paper has been accepted by ACM Transactions on Knowledge Discovery from Data
 “Multifaceted Relation-Aware Meta-Learning with Dual Customization for User Cold-Start Recommendation”
 
